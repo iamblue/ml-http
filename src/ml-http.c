@@ -6,18 +6,13 @@
 DELCARE_HANDLER(http) {
   if (args_cnt == 2 && args_p[0].type == JERRY_API_DATA_TYPE_OBJECT) {
     jerry_api_value_t method;
-    jerry_api_value_t url;
     jerry_api_value_t header;
-    jerry_api_value_t contentType;
+    jerry_api_value_t url;
 
     // method
     jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "method", &method);
     // url
     jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "url", &url);
-    // header
-    jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "header", &header);
-    // contentType
-    jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "contentType", &contentType);
 
     /* method */
     int method_req_sz = jerry_api_string_to_char_buffer(method.v_string, NULL, 0);
@@ -46,9 +41,27 @@ DELCARE_HANDLER(http) {
     char buf[100] = {0};
     client_data.response_buf = buf;
     client_data.response_buf_len = 100;
+
+    // header
+    jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "header", &header);
+
+    /* header */
+    int header_req_sz = jerry_api_string_to_char_buffer(header.v_string, NULL, 0);
+    header_req_sz *= -1;
+    char header_buffer [header_req_sz+1];
+    header_req_sz = jerry_api_string_to_char_buffer (header.v_string, (jerry_api_char_t *) header_buffer, header_req_sz);
+    header_buffer[header_req_sz] = '\0';
+
+    httpclient_set_custom_header(&client, header_buffer);
+
     if (strncmp (method_buffer, "POST", (size_t)method_req_sz) == 0) {
       jerry_api_value_t data;
+      jerry_api_value_t contentType;
+
+      // data
       jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "data", &data);
+      // contentType
+      jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "contentType", &contentType);
 
       /* data */
       int data_req_sz = jerry_api_string_to_char_buffer(data.v_string, NULL, 0);
@@ -68,18 +81,10 @@ DELCARE_HANDLER(http) {
       client_data.post_buf = data_buffer;
       client_data.post_buf_len = strlen(data_buffer);
 
-      /* header */
-      int header_req_sz = jerry_api_string_to_char_buffer(header.v_string, NULL, 0);
-      header_req_sz *= -1;
-      char header_buffer [header_req_sz+1];
-      header_req_sz = jerry_api_string_to_char_buffer (header.v_string, (jerry_api_char_t *) header_buffer, header_req_sz);
-      header_buffer[header_req_sz] = '\0';
-      httpclient_set_custom_header(&client, header_buffer);
       httpclient_post(&client, url_buffer, HTTP_PORT, &client_data);
-
       jerry_api_release_object(&data);
-      jerry_api_release_object(&header);
       jerry_api_release_object(&contentType);
+
     } else if (strncmp (method_buffer, "GET", (size_t)method_req_sz) == 0) {
       httpclient_get(&client, url_buffer, HTTP_PORT, &client_data);
     }
@@ -95,7 +100,7 @@ DELCARE_HANDLER(http) {
     ret_val_p->v_bool = true;
 
     // vPortFree(buf);
-
+    jerry_api_release_object(&header);
     jerry_api_release_object(&method);
     jerry_api_release_object(&url);
     return true;
