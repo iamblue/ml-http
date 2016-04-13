@@ -3,7 +3,7 @@
 #include "httpclient.h"
 #include "microlattice.h"
 
-DELCARE_HANDLER(http) {
+DELCARE_HANDLER(__http) {
   if (args_cnt == 2 && args_p[0].type == JERRY_API_DATA_TYPE_OBJECT) {
     jerry_api_value_t method;
     jerry_api_value_t header;
@@ -15,17 +15,15 @@ DELCARE_HANDLER(http) {
     jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "url", &url);
 
     /* method */
-    int method_req_sz = jerry_api_string_to_char_buffer(method.v_string, NULL, 0);
-    method_req_sz *= -1;
-    char method_buffer [method_req_sz+1];
+    int method_req_sz = -jerry_api_string_to_char_buffer(method.v_string, NULL, 0);
+    char * method_buffer = (char*) malloc (method_req_sz);
     method_req_sz = jerry_api_string_to_char_buffer (method.v_string, (jerry_api_char_t *) method_buffer, method_req_sz);
     method_buffer[method_req_sz] = '\0';
 
     /* url */
-    int url_req_sz = jerry_api_string_to_char_buffer(url.v_string, NULL, 0);
-    url_req_sz *= -1;
-    char url_buffer [url_req_sz+1];
-    url_req_sz = jerry_api_string_to_char_buffer (url.v_string, (jerry_api_char_t *) url_buffer, url_req_sz);
+    int url_req_sz = -jerry_api_string_to_char_buffer (url.v_string, NULL, 0);
+    char * url_buffer = (char*) malloc (url_req_sz);
+    url_req_sz = jerry_api_string_to_char_buffer (url.v_string, url_buffer, url_req_sz);
     url_buffer[url_req_sz] = '\0';
 
     httpclient_t client = {0};
@@ -43,16 +41,17 @@ DELCARE_HANDLER(http) {
     client_data.response_buf_len = 100;
 
     // header
-    jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "header", &header);
-
+    bool isHeader = jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "header", &header);
+    int header_req_sz = 0;
+    char * header_buffer =(char*) malloc (header_req_sz);
     /* header */
-    int header_req_sz = jerry_api_string_to_char_buffer(header.v_string, NULL, 0);
-    header_req_sz *= -1;
-    char header_buffer [header_req_sz+1];
-    header_req_sz = jerry_api_string_to_char_buffer (header.v_string, (jerry_api_char_t *) header_buffer, header_req_sz);
-    header_buffer[header_req_sz] = '\0';
-
-    httpclient_set_custom_header(&client, header_buffer);
+    if (isHeader) {
+      header_req_sz = -jerry_api_string_to_char_buffer (header.v_string, NULL, 0);
+      header_buffer = (char*) malloc (header_req_sz);
+      header_req_sz = jerry_api_string_to_char_buffer (header.v_string, header_buffer, header_req_sz);
+      header_buffer[header_req_sz] = '\0';
+      httpclient_set_custom_header(&client, header_buffer);
+    }
 
     if (strncmp (method_buffer, "POST", (size_t)method_req_sz) == 0) {
       jerry_api_value_t data;
@@ -64,17 +63,15 @@ DELCARE_HANDLER(http) {
       jerry_api_get_object_field_value (args_p[0].v_object, (jerry_api_char_t *) "contentType", &contentType);
 
       /* data */
-      int data_req_sz = jerry_api_string_to_char_buffer(data.v_string, NULL, 0);
-      data_req_sz *= -1;
-      char data_buffer [data_req_sz+1];
-      data_req_sz = jerry_api_string_to_char_buffer (data.v_string, (jerry_api_char_t *) data_buffer, data_req_sz);
+      int data_req_sz = -jerry_api_string_to_char_buffer (data.v_string, NULL, 0);
+      char * data_buffer = (char*) malloc (data_req_sz);
+      data_req_sz = jerry_api_string_to_char_buffer (data.v_string, data_buffer, data_req_sz);
       data_buffer[data_req_sz] = '\0';
 
       /* contentType */
-      int contentType_req_sz = jerry_api_string_to_char_buffer(contentType.v_string, NULL, 0);
-      contentType_req_sz *= -1;
-      char contentType_buffer [contentType_req_sz+1];
-      contentType_req_sz = jerry_api_string_to_char_buffer (contentType.v_string, (jerry_api_char_t *) contentType_buffer, contentType_req_sz);
+      int contentType_req_sz = -jerry_api_string_to_char_buffer (contentType.v_string, NULL, 0);
+      char * contentType_buffer = (char*) malloc (contentType_req_sz);
+      contentType_req_sz = jerry_api_string_to_char_buffer (contentType.v_string, contentType_buffer, contentType_req_sz);
       contentType_buffer[contentType_req_sz] = '\0';
 
       client_data.post_content_type = contentType_buffer;
@@ -84,6 +81,8 @@ DELCARE_HANDLER(http) {
       httpclient_post(&client, url_buffer, HTTP_PORT, &client_data);
       jerry_api_release_object(&data);
       jerry_api_release_object(&contentType);
+      free(data_buffer);
+      free(contentType_buffer);
 
     } else if (strncmp (method_buffer, "GET", (size_t)method_req_sz) == 0) {
       httpclient_get(&client, url_buffer, HTTP_PORT, &client_data);
@@ -99,15 +98,17 @@ DELCARE_HANDLER(http) {
     ret_val_p->type = JERRY_API_DATA_TYPE_BOOLEAN;
     ret_val_p->v_bool = true;
 
-    // vPortFree(buf);
     jerry_api_release_object(&header);
     jerry_api_release_object(&method);
     jerry_api_release_object(&url);
+    free(method_buffer);
+    free(url_buffer);
+    free(header_buffer);
     return true;
   }
 }
 
 
 void ml_http_init(void) {
-  REGISTER_HANDLER(http);
+  REGISTER_HANDLER(__http);
 }
