@@ -6,7 +6,7 @@
 
 /* get api */
 
-http({
+__http({
   method: 'GET' // string
   url:    //string
   header: // string, default please set: '\r\n'
@@ -16,7 +16,7 @@ http({
 
 /* post api */
 
-http({
+__http({
   url: // string,
   method: 'POST' // string,
   header: // string, default please set: '\r\n'
@@ -38,7 +38,7 @@ http({
     header: '\r\n',
   };
 
-  http(config, function(data) {
+  __http(config, function(data) {
     print(data);
     var i = JSON.parse(data);
     print('status:' + i.status);
@@ -54,7 +54,7 @@ http({
     data: JSON.stringify(data),
   }
 
-  http(config, function(data) {
+  __http(config, function(data) {
     print('data: '+ data);
   });
 
