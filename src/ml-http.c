@@ -68,18 +68,16 @@ DELCARE_HANDLER(__http) {
       client_data.post_buf = data_buffer;
       client_data.post_buf_len = data_req_sz;
 
-      httpclient_post(&client, url_buffer, HTTP_PORT, &client_data);
+      httpclient_set_custom_header(&client, header_buffer);
+      httpclient_send_request(&client, url_buffer, HTTPCLIENT_POST, &client_data);
 
       jerry_release_value(prop_data);
       jerry_release_value(prop_contentType);
       jerry_release_value(data);
       jerry_release_value(contentType);
 
-      free(data_buffer);
-      free(contentType_buffer);
-
     } else if (strncmp (method_buffer, "GET", (size_t)method_req_sz) == 0) {
-      httpclient_get(&client, url_buffer, HTTP_PORT, &client_data);
+      httpclient_get(&client, url_buffer, &client_data);
     }
 
     jerry_value_t params[0];
@@ -92,7 +90,7 @@ DELCARE_HANDLER(__http) {
     jerry_release_value(this_val);
     jerry_release_value(ret_val);
 
-    httpclient_close(&client, HTTP_PORT);
+    httpclient_close(&client);
 
     jerry_release_value(header);
     jerry_release_value(method);
@@ -101,10 +99,6 @@ DELCARE_HANDLER(__http) {
     jerry_release_value(prop_method);
     jerry_release_value(prop_url);
 
-    free(buf);
-    free(method_buffer);
-    free(url_buffer);
-    free(header_buffer);
     buf = NULL;
   }
   return jerry_create_boolean (true);
